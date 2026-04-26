@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎓 JEE/NEET AI Tutor - Vision Pro 2.5</title>
+    <title>🎓 JEE/NEET AI Tutor - Text Pro</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -33,14 +33,23 @@
         .auth-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #0b93f6, #0066cc); color: white; border: none; border-radius: 14px; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
         .auth-btn:active { transform: scale(0.96); }
         
-        /* 💬 Chat UI */
+        /* 💬 Chat UI (BOX SHRINK PROBLEM FIXED ✅) */
         #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; background: var(--bg); scroll-behavior: smooth; }
-        .message { padding: 15px 20px; border-radius: 20px; max-width: 85%; font-size: 15.5px; line-height: 1.6; word-wrap: break-word; animation: slideUp 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; opacity: 0; transform: translateY(20px); }
+        
+        /* Box fix: Added width: fit-content and overflow-wrap */
+        .message { padding: 15px 20px; border-radius: 20px; max-width: 85%; width: fit-content; font-size: 15.5px; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; animation: slideUp 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; opacity: 0; transform: translateY(20px); }
+        
         @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
         .user-msg { background: linear-gradient(135deg, #0b93f6, #0077e6); align-self: flex-end; border-bottom-right-radius: 4px; color: #fff; }
-        .ai-msg { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #2a2a2a; color: #e0e0e0; overflow-x: auto; }
         
-        .message img { max-width: 100%; border-radius: 10px; margin-bottom: 10px; }
+        /* AI message box fix: Removed overflow-x */
+        .ai-msg { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #2a2a2a; color: #e0e0e0; }
+        .ai-msg p { margin-top: 0; margin-bottom: 10px; }
+        .ai-msg p:last-child { margin-bottom: 0; }
+        
+        /* Code blocks properly handle scroll */
+        .ai-msg pre { background: #000; padding: 12px; border-radius: 10px; overflow-x: auto; border: 1px solid #333; max-width: 100%; }
+        .ai-msg code { font-family: monospace; color: #ffcc00; }
 
         /* ⌨️ Typing Indicator */
         .typing-dots { display: flex; gap: 4px; padding: 5px; align-items: center; }
@@ -49,17 +58,10 @@
         .dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); background-color: var(--primary); } }
 
-        /* 📸 Image Preview Area */
-        #preview-container { display: none; padding: 10px 20px; background: var(--surface); border-top: 1px solid #2a2a2a; position: relative; }
-        #preview-image { height: 60px; border-radius: 8px; border: 2px solid var(--primary); }
-        #cancel-image { position: absolute; top: 5px; left: 75px; background: #ff4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; }
-
         /* ✍️ Input Area */
         #input-area { background: var(--surface); padding: 15px 20px; display: flex; gap: 10px; border-top: 1px solid #2a2a2a; align-items: center; }
         #user-input { flex: 1; padding: 15px 20px; border-radius: 30px; border: 1px solid #333; background: var(--input-bg); color: white; outline: none; font-size: 15px; }
-        .icon-btn { background: #2a2a2d; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .icon-btn:active { transform: scale(0.9); }
-        .send-btn { background: linear-gradient(135deg, #0b93f6, #0066cc); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 22px; transition: 0.2s; }
+        .send-btn { background: linear-gradient(135deg, #0b93f6, #0066cc); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; font-size: 22px; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
         .send-btn:active { transform: scale(0.9); }
     </style>
 </head>
@@ -80,23 +82,14 @@
     <div id="chat-screen" class="screen">
         <div id="chat-box"></div>
         
-        <div id="preview-container">
-            <img id="preview-image" src="" alt="preview">
-            <button id="cancel-image" onclick="clearImage()">❌</button>
-        </div>
-
         <div id="input-area">
-            <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
-            
-            <button class="icon-btn" onclick="document.getElementById('file-input').click()">📷</button>
-            
-            <input type="text" id="user-input" placeholder="✍️ Ask a doubt or attach photo..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input type="text" id="user-input" placeholder="✍️ Ask a doubt..." onkeypress="if(event.key === 'Enter') sendMessage()">
             <button class="send-btn" onclick="sendMessage()">🚀</button>
         </div>
     </div>
 
     <script>
-        // 1. Firebase Setup (Hidden Key - Safe from Bots)
+        // 1. Firebase Setup
         const fb1 = "AIzaSyCtn";
         const fb2 = "6o2he56DMgd";
         const fb3 = "s5SsawXyHEd";
@@ -117,40 +110,12 @@
         let isLoginMode = true;
         let currentUser = null;
 
-        // 2. Gemini API Key
+        // 2. Gemini API Key (Using your exact 2.5 request)
         const p1 = "AIzaSyD944T";
         const p2 = "b7nDw2DKYGj";
         const p3 = "FCXY0PXIRkeg";
         const p4 = "QpPd4";
         const GEMINI_API_KEY = p1 + p2 + p3 + p4;
-
-        // --- Photo Upload Logic ---
-        let selectedImageData = null;
-        let selectedImageMimeType = null;
-        let imageDisplayUrl = null;
-
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if(!file) return;
-            
-            selectedImageMimeType = file.type;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                imageDisplayUrl = e.target.result; 
-                selectedImageData = e.target.result.split(',')[1]; 
-                document.getElementById('preview-image').src = imageDisplayUrl;
-                document.getElementById('preview-container').style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function clearImage() {
-            selectedImageData = null;
-            selectedImageMimeType = null;
-            imageDisplayUrl = null;
-            document.getElementById('file-input').value = "";
-            document.getElementById('preview-container').style.display = 'none';
-        }
 
         // --- Auth Logic ---
         function toggleAuth() {
@@ -170,7 +135,7 @@
             } catch (error) { errBox.innerText = error.message; errBox.style.display = 'block'; }
         }
 
-        // --- Chat Logic ---
+        // --- Chat History Logic ---
         async function showChat() {
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'flex';
@@ -187,71 +152,43 @@
             } catch(e) { chatBox.innerHTML = ''; }
         }
 
-        function appendMessage(type, rawText, isHtml = false, imageUrl = null) {
+        function appendMessage(type, rawText, isHtml = false) {
             const chatBox = document.getElementById('chat-box');
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${type}`;
             
-            let finalContent = "";
-            if(imageUrl) { finalContent += `<img src="${imageUrl}" style="max-width:100%; border-radius:8px; margin-bottom:8px;"><br>`; }
-            
             if(type === 'ai-msg') {
-                finalContent += isHtml ? rawText : marked.parse(rawText);
+                msgDiv.innerHTML = isHtml ? rawText : marked.parse(rawText);
             } else {
-                finalContent += rawText;
+                msgDiv.innerText = rawText;
             }
             
-            msgDiv.innerHTML = finalContent;
             chatBox.appendChild(msgDiv);
             setTimeout(() => { chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' }); }, 50);
             if(type === 'ai-msg' && !isHtml) MathJax.typesetPromise([msgDiv]);
             return msgDiv;
         }
 
-        // --- 🚀 Send Logic (Fully Fixed for Text & Image) ---
+        // --- 🚀 Send Logic (Text Only, API 2.5) ---
         async function sendMessage() {
             const inputField = document.getElementById('user-input');
             const text = inputField.value.trim();
             
-            // Text aur Photo dono khali hain toh kuch mat bhejo
-            if(text === "" && selectedImageData === null) return; 
+            if(!text) return; 
 
-            // 1. User message dikhao screen par
-            appendMessage('user-msg', text, false, imageDisplayUrl);
-            
-            const currentImgData = selectedImageData;
-            const currentImgMime = selectedImageMimeType;
-            
-            // Turant input field aur photo preview khali karo
+            // 1. Show user message
+            appendMessage('user-msg', text);
             inputField.value = '';
-            clearImage(); 
             
             const typingHtml = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
             const loadingMsg = appendMessage('ai-msg', typingHtml, true);
 
             try {
-                // 2. Data Prepare karo AI ke liye
-                const apiParts = [];
-                
-                // Smart Prompt: Agar photo hai toh alag, sirf text hai toh alag
-                let systemPrompt = "You are an Expert JEE/NEET tutor. Format math strictly with $$. ";
-                if (currentImgData) {
-                    systemPrompt += "Please explain the attached image in detail. " + (text !== "" ? `User asks: ${text}` : "");
-                } else {
-                    systemPrompt += `User asks: ${text}`;
-                }
-                
-                apiParts.push({ text: systemPrompt });
-                
-                if(currentImgData) {
-                    apiParts.push({ inlineData: { data: currentImgData, mimeType: currentImgMime } });
-                }
-
-                // 3. Call API (gemini-2.5-flash as requested)
+                // Call API (gemini-2.5-flash as requested)
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: apiParts }] })
+                    body: JSON.stringify({ contents: [{ parts: [{text: "You are an Expert JEE/NEET tutor. Format math strictly with $$. User asks: " + text}] }] })
                 });
                 
                 const data = await response.json();
@@ -265,10 +202,9 @@
                 loadingMsg.innerHTML = marked.parse(aiText);
                 MathJax.typesetPromise([loadingMsg]);
 
-                // 4. Save to Firebase
-                const saveText = text !== "" ? text : "[📷 Photo Uploaded]";
+                // Save to Firebase
                 await db.collection('chats').doc(currentUser.uid).collection('messages').add({
-                    text: saveText, 
+                    text: text, 
                     sender: 'user', 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
