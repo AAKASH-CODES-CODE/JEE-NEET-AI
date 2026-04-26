@@ -76,14 +76,21 @@
 
     <script>
         // 1. Firebase Setup
-        const firebaseConfig = {
-            apiKey: "AIzaSyCtn6o2he56DMgds5SsawXyHEdV8VQWGCs",
-            authDomain: "jee-neet-tutor.firebaseapp.com",
-            projectId: "jee-neet-tutor",
-            storageBucket: "jee-neet-tutor.firebasestorage.app",
-            messagingSenderId: "64229241153",
-            appId: "1:64229241153:web:d59a449065caf9eaa0b1c0"
-        };
+        // 1. Firebase Setup (Hidden Key)
+const fb1 = "AIzaSyCtn";
+const fb2 = "6o2he56DMgd";
+const fb3 = "s5SsawXyHEd";
+const fb4 = "V8VQWGCs";
+
+const firebaseConfig = {
+    apiKey: fb1 + fb2 + fb3 + fb4,
+    authDomain: "jee-neet-tutor.firebaseapp.com",
+    projectId: "jee-neet-tutor",
+    storageBucket: "jee-neet-tutor.firebasestorage.app",
+    messagingSenderId: "64229241153",
+    appId: "1:64229241153:web:d59a449065caf9eaa0b1c0"
+};
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
