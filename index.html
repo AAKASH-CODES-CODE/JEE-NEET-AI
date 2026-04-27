@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎓 JEE/NEET AI Tutor - Master Pro Max</title>
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0c">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -171,7 +175,6 @@
             { key: "AIzaSyB" + "uCIM_HxG" + "dsRJWWtO" + "HNd2BFG8tIJRcfRM", blockedUntil: 0 }  
         ];
 
-        // 🔥 GitHub Secret Bypass: Keys splitted into parts
         const groqPool = [
             { key: "gsk_F4M2" + "tPRTblkVEci7" + "fNtQWGdyb3FY" + "e8rH5bkGpRFaGXZPzHeq31NW", blockedUntil: 0 },
             { key: "gsk_n2QT" + "3sucz7B3JBe4" + "vAreWGdyb3FY" + "hT0funn2wGN8VSdBgY0TMQmT", blockedUntil: 0 },
@@ -183,7 +186,7 @@
         ];
 
         // 🔀 Model Switch UI Logic
-        let activeEngine = 'groq'; // Default changed to Llama
+        let activeEngine = 'groq'; 
         
         function toggleModelMenu() {
             document.getElementById('model-popup-menu').classList.toggle('show');
@@ -209,7 +212,6 @@
             document.getElementById('model-popup-menu').classList.remove('show');
         }
 
-        // Close menu if clicked outside
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('model-popup-menu');
             const btn = document.getElementById('model-select-btn');
@@ -504,6 +506,17 @@
                 }
             }
             if (!success) loading.innerHTML = "❌ Error: " + lastError; 
+        }
+
+        // 🔥 PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('PWA Registered!', reg);
+                }).catch(err => {
+                    console.log('PWA Error:', err);
+                });
+            });
         }
     </script>
 </body>
