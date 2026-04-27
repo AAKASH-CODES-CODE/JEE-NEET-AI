@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎓 JEE/NEET AI Tutor - Pro Sessions</title>
+    <title>🎓 JEE/NEET AI Tutor - Pro</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -21,7 +21,7 @@
         /* 📱 Layout & Header */
         #header { background: var(--surface); padding: 12px 18px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
         .nav-btns { display: flex; gap: 10px; }
-        .btn-small { padding: 6px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-small { padding: 6px 12px; border-radius: 8px; border: none; font-size: 12px; cursor: pointer; font-weight: bold; color: white; display: none; /* Default hidden */ }
         .history-btn { background: #333; }
         .logout-btn { background: #ff4444; }
 
@@ -56,10 +56,12 @@
         .send-btn { background: var(--primary); border: none; border-radius: 50%; width: 45px; height: 45px; color: white; cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;}
 
         /* 🔐 Auth UI */
-        #auth-screen { justify-content: center; align-items: center; display: none; }
+        #auth-screen { justify-content: center; align-items: center; display: flex; }
         .auth-box { background: var(--surface); padding: 30px; border-radius: 20px; width: 85%; max-width: 350px; text-align: center; }
+        
         .input-field { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: var(--input-bg); color: white; box-sizing: border-box; }
-        .auth-btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer;}
+        .auth-btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.2s;}
+        .auth-btn:active { transform: scale(0.95); }
         
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 900; }
     </style>
@@ -69,7 +71,7 @@
     <div id="sidebar">
         <div class="sidebar-header">
             <strong>📂 History</strong>
-            <button class="btn-small history-btn" onclick="toggleSidebar()">Close</button>
+            <button class="btn-small history-btn" style="display:block;" onclick="toggleSidebar()">Close</button>
         </div>
         <button class="auth-btn" style="margin: 10px; width: auto;" onclick="startNewChat()">+ New Chat</button>
         <div id="history-list" class="history-list"></div>
@@ -77,19 +79,25 @@
     <div id="overlay" onclick="toggleSidebar()"></div>
 
     <div id="header">
-        <button class="btn-small history-btn" onclick="toggleSidebar()">📂 History</button>
-        <span>🎓 AI Tutor 🚀</span>
-        <button class="btn-small logout-btn" onclick="handleLogout()">Logout</button>
+        <button id="btn-history" class="btn-small history-btn" onclick="toggleSidebar()">📂 History</button>
+        <span style="font-weight: 800; font-size: 18px;">🎓 AI Tutor 🚀</span>
+        <button id="btn-logout" class="btn-small logout-btn" onclick="handleLogout()">Logout</button>
     </div>
 
     <div id="auth-screen" class="screen">
         <div class="auth-box">
-            <h2 id="auth-title">Welcome! 👨‍🎓</h2>
+            <h2 id="auth-title">Welcome Back! 👨‍🎓</h2>
+            
+            <input type="text" id="auth-name" class="input-field" placeholder="👤 Full Name" style="display: none; border-color: var(--primary);">
+            <input type="tel" id="auth-phone" class="input-field" placeholder="📱 Phone Number" style="display: none; border-color: var(--primary);">
+            
             <input type="email" id="auth-email" class="input-field" placeholder="📧 Email ID">
             <input type="password" id="auth-password" class="input-field" placeholder="🔑 Password">
-            <button class="auth-btn" onclick="handleAuth()">Continue ⚡</button>
-            <p onclick="toggleAuth()" id="toggle-text" style="font-size: 12px; margin-top: 15px; cursor: pointer; color: #aaa;">New student? <span style="color: var(--primary);">Sign Up</span></p>
-            <p id="auth-error" style="color: #ff5555; font-size: 12px; display: none; margin-top:10px;"></p>
+            
+            <button id="auth-submit-btn" class="auth-btn" onclick="handleAuth()">Login ⚡</button>
+            
+            <p onclick="toggleAuthMode()" id="toggle-text" style="font-size: 13px; margin-top: 15px; cursor: pointer; color: #aaa;">New student? <span style="color: var(--primary);">Sign Up</span></p>
+            <p id="auth-error" style="font-size: 13px; display: none; margin-top:15px;"></p>
         </div>
     </div>
 
@@ -109,7 +117,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // 2. Gemini Config (2.5 Flash Setup)
+        // 2. Gemini Config
         const p1 = "AIzaSyB"; const p2 = "yzZaiiVg"; const p3 = "yATWNyAi"; const p4 = "TVNUYzh4cLw-dEow";
         const GEMINI_API_KEY = p1+p2+p3+p4;
 
@@ -117,23 +125,105 @@
         let isLoginMode = true;
         let currentSessionId = null;
 
-        // --- Auth Logic ---
+        // --- 🔐 Auth State Check (With Header Fix) ---
         auth.onAuthStateChanged(user => {
             if (user && user.emailVerified) {
                 currentUser = user;
+                // Login hone par Header Buttons dikhao
+                document.getElementById('btn-history').style.display = 'block';
+                document.getElementById('btn-logout').style.display = 'block';
+                
                 startNewChat(); 
                 loadHistory();
             } else {
                 currentUser = null;
+                // Logout hone par Header Buttons chhipa do
+                document.getElementById('btn-history').style.display = 'none';
+                document.getElementById('btn-logout').style.display = 'none';
+                
                 document.getElementById('auth-screen').style.display = 'flex';
                 document.getElementById('chat-screen').style.display = 'none';
             }
         });
 
+        // --- 🔄 Toggle between Login & Signup ---
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            showError(""); // Clear previous errors
+            
+            document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back! 👨‍🎓" : "Join Us! ✨";
+            document.getElementById('toggle-text').innerHTML = isLoginMode ? "New student? <span style='color: var(--primary);'>Sign Up</span>" : "Have account? <span style='color: var(--primary);'>Login</span>";
+            document.getElementById('auth-submit-btn').innerText = isLoginMode ? "Login ⚡" : "Sign Up 🚀";
+            
+            // Show/Hide Extra Fields
+            document.getElementById('auth-name').style.display = isLoginMode ? 'none' : 'block';
+            document.getElementById('auth-phone').style.display = isLoginMode ? 'none' : 'block';
+        }
+
+        function showError(msg, isSuccess = false) {
+            const errBox = document.getElementById('auth-error');
+            if(!msg) { errBox.style.display = 'none'; return; }
+            errBox.style.color = isSuccess ? '#28a745' : '#ff5555';
+            errBox.innerText = msg;
+            errBox.style.display = 'block';
+        }
+
+        // --- 📧 Email & Password Logic ---
+        async function handleAuth() {
+            const name = document.getElementById('auth-name').value.trim();
+            const phone = document.getElementById('auth-phone').value.trim();
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-password').value.trim();
+            
+            if (!email || !pass) { showError("Please enter Email and Password."); return; }
+
+            try {
+                if (isLoginMode) {
+                    // LOGIN FLOW
+                    const res = await auth.signInWithEmailAndPassword(email, pass);
+                    if (!res.user.emailVerified) { 
+                        await auth.signOut(); 
+                        throw new Error("⚠️ Please verify your email first! Check your inbox."); 
+                    }
+                } else {
+                    // SIGNUP FLOW
+                    if(!name || !phone) throw new Error("Please enter your Full Name and Phone Number!"); 
+                    
+                    document.getElementById('auth-submit-btn').innerText = "Creating Account...";
+                    const res = await auth.createUserWithEmailAndPassword(email, pass);
+                    
+                    // Profile Update (Name)
+                    await res.user.updateProfile({ displayName: name }); 
+                    
+                    // Database me extra details save karna
+                    await db.collection('users').doc(res.user.uid).set({
+                        name: name,
+                        phone: phone,
+                        email: email,
+                        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Verification Email Bhejo
+                    await res.user.sendEmailVerification();
+                    await auth.signOut(); // Force logout until verified
+                    
+                    alert("✅ Account Created! A verification link has been sent to your email. Please verify and login.");
+                    toggleAuthMode(); // Wapas login page par bhej do
+                }
+            } catch (e) { 
+                showError(e.message); 
+                document.getElementById('auth-submit-btn').innerText = isLoginMode ? "Login ⚡" : "Sign Up 🚀";
+            }
+        }
+
+        // --- 🎓 App Logic ---
         function startNewChat() {
             currentSessionId = "sess_" + Date.now();
             document.getElementById('chat-box').innerHTML = '';
-            appendMessage('ai-msg', "👋 Hello! Naya session shuru ho gaya hai. Puchiye apna doubt! 🎯", true);
+            
+            const userName = currentUser.displayName || "Student"; 
+            appendMessage('ai-msg', `👋 Hello <b style="color:var(--primary);">${userName}</b>! Naya session shuru ho gaya hai. Puchiye apna doubt! 🎯`, true);
+            
             if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'flex';
@@ -146,58 +236,28 @@
             ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
         }
 
-        function toggleAuth() {
-            isLoginMode = !isLoginMode;
-            document.getElementById('auth-title').innerText = isLoginMode ? "Welcome! 👨‍🎓" : "Join Us! ✨";
-            document.getElementById('toggle-text').innerHTML = isLoginMode ? "New student? <span style='color: var(--primary);'>Sign Up</span>" : "Have account? <span style='color: var(--primary);'>Login</span>";
-            document.getElementById('auth-error').style.display = 'none';
+        async function handleLogout() { 
+            if(confirm("Are you sure you want to logout?")) {
+                await auth.signOut(); 
+            }
         }
 
-        async function handleAuth() {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-password').value;
-            const errBox = document.getElementById('auth-error');
-            try {
-                if (isLoginMode) {
-                    const res = await auth.signInWithEmailAndPassword(email, pass);
-                    if (!res.user.emailVerified) { await auth.signOut(); throw new Error("Please verify your email first!"); }
-                } else {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await res.user.sendEmailVerification();
-                    await auth.signOut();
-                    alert("Verification link sent! Check your Email.");
-                    toggleAuth();
-                }
-            } catch (e) { errBox.innerText = e.message; errBox.style.display = 'block'; }
-        }
-
-        async function handleLogout() { if(confirm("Are you sure you want to logout?")) await auth.signOut(); }
-
-        // --- 📂 History Logic (Simplified for No-Index Error) ---
+        // --- 📂 History Logic ---
         async function loadHistory() {
             const list = document.getElementById('history-list');
             db.collection('users').doc(currentUser.uid).collection('sessions')
               .orderBy('timestamp', 'desc').onSnapshot(snap => {
                 list.innerHTML = '';
-                if (snap.empty) {
-                    list.innerHTML = '<div style="padding:10px;font-size:12px;color:#666;">No history found.</div>';
-                    return;
-                }
+                if (snap.empty) { list.innerHTML = '<div style="padding:10px;font-size:12px;color:#666;">No history found.</div>'; return; }
                 snap.forEach(doc => {
                     const data = doc.data();
-                    if (data.hidden) return; // Filter hidden ones locally
+                    if (data.hidden) return; 
                     const item = document.createElement('div');
                     item.className = 'history-item';
-                    item.innerHTML = `
-                        <span onclick="loadSession('${doc.id}')">📚 ${data.title.substring(0, 18)}...</span>
-                        <span class="del-session" onclick="hideSession('${doc.id}')">🗑️</span>
-                    `;
+                    item.innerHTML = `<span onclick="loadSession('${doc.id}')">📚 ${data.title.substring(0, 18)}...</span><span class="del-session" onclick="hideSession('${doc.id}')">🗑️</span>`;
                     list.appendChild(item);
                 });
-            }, err => {
-                console.error("Firestore Error:", err);
-                list.innerHTML = `<div style="color:red;padding:10px;font-size:10px;">Error: ${err.message}</div>`;
-            });
+            }, err => console.error("Firestore Error:", err));
         }
 
         async function loadSession(id) {
@@ -205,7 +265,6 @@
             const chatBox = document.getElementById('chat-box');
             chatBox.innerHTML = '<div style="text-align:center;font-size:12px;color:#666;margin-top:20px;">⌛ Loading Session...</div>';
             toggleSidebar();
-            
             const snap = await db.collection('users').doc(currentUser.uid).collection('sessions').doc(id).collection('messages').orderBy('timestamp').get();
             chatBox.innerHTML = '';
             snap.forEach(doc => appendMessage(doc.data().sender === 'user' ? 'user-msg' : 'ai-msg', doc.data().text, false));
@@ -218,7 +277,7 @@
             }
         }
 
-        // --- 💬 Message Logic (Instant Save) ---
+        // --- 💬 Message & Gemini Logic ---
         function appendMessage(type, text, isHtml = false) {
             const chatBox = document.getElementById('chat-box');
             const div = document.createElement('div');
@@ -236,17 +295,13 @@
             const text = input.value.trim();
             if(!text || !currentUser) return;
 
-            // 1. Session Update (Instant)
             const sessRef = db.collection('users').doc(currentUser.uid).collection('sessions').doc(currentSessionId);
             const sessDoc = await sessRef.get();
-            if(!sessDoc.exists) {
-                await sessRef.set({ title: text, timestamp: firebase.firestore.FieldValue.serverTimestamp(), hidden: false });
-            }
+            if(!sessDoc.exists) await sessRef.set({ title: text, timestamp: firebase.firestore.FieldValue.serverTimestamp(), hidden: false });
 
             appendMessage('user-msg', text);
             input.value = '';
 
-            // 2. Message Save (Instant)
             const msgPath = sessRef.collection('messages');
             await msgPath.add({ text: text, sender: 'user', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
             
@@ -266,12 +321,8 @@
                 loadingMsg.innerHTML = marked.parse(aiText);
                 MathJax.typesetPromise([loadingMsg]);
 
-                // 3. AI Reply Save
                 await msgPath.add({ text: aiText, sender: 'ai', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-                
-            } catch (e) { 
-                loadingMsg.innerHTML = `❌ **Error:** ${e.message}`; 
-            }
+            } catch (e) { loadingMsg.innerHTML = `❌ **Error:** ${e.message}`; }
         }
     </script>
 </body>
