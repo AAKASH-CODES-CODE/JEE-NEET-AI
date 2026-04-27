@@ -307,4 +307,90 @@
             isRecording ? recognition.stop() : recognition.start();
         }
 
-        // 5. 
+        // 5. History & Message Logic
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            db.collection('users').doc(currentUser.uid).collection('sessions').orderBy('timestamp', 'desc').onSnapshot(snap => {
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    if (doc.data().hidden) return;
+                    const item = document.createElement('div'); item.className = 'history-item';
+                    item.innerHTML = `<span onclick="loadSession('${doc.id}')">📚 ${doc.data().title.substring(0, 18)}...</span><span onclick="hideSession('${doc.id}')" style="color:#ff4444;">🗑️</span>`;
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        async function loadSession(id) {
+            currentSessionId = id; const chatBox = document.getElementById('chat-box'); chatBox.innerHTML = '⌛ Loading...';
+            toggleSidebar();
+            const snap = await db.collection('users').doc(currentUser.uid).collection('sessions').doc(id).collection('messages').orderBy('timestamp').get();
+            chatBox.innerHTML = ''; snap.forEach(doc => appendMessage(doc.data().sender === 'user' ? 'user-msg' : 'ai-msg', doc.data().text, false));
+        }
+
+        async function hideSession(id) { if(confirm("Chat hatayein?")) { await db.collection('users').doc(currentUser.uid).collection('sessions').doc(id).update({ hidden: true }); if(currentSessionId === id) startNewChat(); } }
+
+        function appendMessage(type, text, isHtml = false) {
+            const chatBox = document.getElementById('chat-box'); const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = (type === 'ai-msg' && !isHtml) ? marked.parse(text) : text;
+            if(type === 'user-msg') div.innerText = text;
+            chatBox.appendChild(div); chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+            if(type === 'ai-msg' && !isHtml) MathJax.typesetPromise([div]);
+            return div;
+        }
+
+        // ⏳ Anti-Spam Timer
+        let isCooldown = false;
+
+        async function sendMessage() {
+            if (isCooldown) {
+                const input = document.getElementById('user-input');
+                const oldPlaceholder = input.placeholder;
+                input.placeholder = "⏳ Wait 5s...";
+                input.value = "";
+                setTimeout(() => input.placeholder = oldPlaceholder, 2000);
+                return;
+            }
+
+            const input = document.getElementById('user-input'); const text = input.value.trim();
+            if(!text || !currentUser) return;
+            
+            // 5 Seconds Cooldown Lock
+            isCooldown = true;
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.style.opacity = '0.4';
+            setTimeout(() => {
+                isCooldown = false;
+                sendBtn.style.opacity = '1';
+            }, 5000);
+
+            // Hide suggestions on send
+            document.getElementById('suggestions-box').style.display = 'none'; 
+            
+            const sessRef = db.collection('users').doc(currentUser.uid).collection('sessions').doc(currentSessionId);
+            if(!(await sessRef.get()).exists) await sessRef.set({ title: text, timestamp: firebase.firestore.FieldValue.serverTimestamp(), hidden: false });
+            appendMessage('user-msg', text); input.value = '';
+            const loading = appendMessage('ai-msg', `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`, true);
+            const healthy = getHealthyKey();
+            if(!healthy) { loading.innerHTML = "❌ Keys limit full. Baad mein try karein."; return; }
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${healthy.key}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{text: "Expert JEE/NEET tutor. Format math strictly with $$. Query: " + text}] }] })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    if (res.status === 429) healthy.original.blockedUntil = Date.now() + (4 * 60 * 60 * 1000);
+                    throw new Error("API Limit reached.");
+                }
+                const aiText = data.candidates[0].content.parts[0].text;
+                loading.innerHTML = marked.parse(aiText); MathJax.typesetPromise([loading]);
+                await sessRef.collection('messages').add({ text, sender: 'user', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                await sessRef.collection('messages').add({ text: aiText, sender: 'ai', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            } catch (e) { loading.innerHTML = "❌ Error: " + e.message; }
+        }
+    </script>
+</body>
+</html>
