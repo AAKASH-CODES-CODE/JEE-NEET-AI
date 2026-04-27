@@ -323,13 +323,13 @@
             ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
         }
 
-        async function handleLogout() { if(confirm("Logout karein?")) { toggleMenu(); await auth.signOut(); } }
+        async function handleLogout() { if(confirm("Logout?")) { toggleMenu(); await auth.signOut(); } }
 
         function startNewChat() {
             currentSessionId = "sess_" + Date.now();
             currentChatContext = []; 
             document.getElementById('chat-box').innerHTML = '';
-            appendMessage('ai-msg', `👋 Hello <b style="color:var(--primary);">${currentUser.displayName || 'Student'}</b>! Naya session shuru ho gaya hai. Puchiye apna doubt! 🎯`, true);
+            appendMessage('ai-msg', `👋 Hello <b style="color:var(--primary);">${currentUser.displayName || 'Student'}</b>! Welcome , How can I help you ?`, true);
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'flex';
         }
@@ -386,7 +386,7 @@
             });
         }
 
-        async function hideSession(id) { if(confirm("Chat hatayein?")) { await db.collection('users').doc(currentUser.uid).collection('sessions').doc(id).update({ hidden: true }); if(currentSessionId === id) startNewChat(); } }
+        async function hideSession(id) { if(confirm("Delete Session?")) { await db.collection('users').doc(currentUser.uid).collection('sessions').doc(id).update({ hidden: true }); if(currentSessionId === id) startNewChat(); } }
 
         function appendMessage(type, text, isHtml = false) {
             const chatBox = document.getElementById('chat-box'); const div = document.createElement('div');
