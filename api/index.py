@@ -62,11 +62,11 @@ def chat():
         
         url = "https://openrouter.ai/api/v1/chat/completions"
         
-        # 🔥 Master Auto-Fallback List: 3 Sabse Stable Free Models
+        # 🔥 Master Auto-Fallback List: 100% Working Free Models
         free_models = [
-            "meta-llama/llama-3-8b-instruct:free",  # Model 1
-            "mistralai/mistral-7b-instruct:free",   # Model 2
-            "huggingfaceh4/zephyr-7b-beta:free"     # Model 3
+            "google/gemini-2.0-flash-exp:free",
+            "mistralai/mistral-7b-instruct:free",
+            "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"
         ]
 
         # Pehle Key 1 try hogi, phir saare models. Agar fail, toh Key 2 try hogi.
@@ -96,7 +96,7 @@ def chat():
                     last_error = str(e)
                     continue
         
-        return jsonify({"success": False, "error": f"OpenRouter API busy hai. Last Error: {last_error}"}), 500
+        return jsonify({"success": False, "error": f"OpenRouter API issue. OpenRouter dashboard par ZDR settings check karein. Last Error: {last_error}"}), 500
 
     else:
         return jsonify({"success": False, "error": "Invalid engine selected."}), 400
