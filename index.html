@@ -303,23 +303,20 @@
         }
         #user-input::placeholder { color: var(--text-muted); }
 
+        /* EDITED: Made button perfect circle so it doesn't push Send button out */
         .engine-switch-btn {
             background: rgba(255,255,255,0.05);
-            color: #a855f7;
             border: 1px solid var(--border);
-            border-radius: 22px;
-            padding: 0 12px;
+            border-radius: 50%;
+            width: 46px; 
             height: 46px;
-            font-size: 12px;
-            font-weight: 700;
+            font-size: 18px;
             cursor: pointer;
             transition: all 0.25s;
-            white-space: nowrap;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            letter-spacing: 0.3px;
+            flex-shrink: 0;
         }
         .engine-switch-btn:hover { border-color: var(--border-glow); background: rgba(0,198,255,0.06); }
 
@@ -736,7 +733,7 @@
                 placeholder="✍️ Ask a doubt..."
                 onkeypress="if(event.key==='Enter') sendMessage()"
                 oninput="fetchGoogleSuggestions(this.value)">
-            <button id="model-select-btn" class="engine-switch-btn" onclick="toggleModelMenu()">🌐 OpenRouter</button>
+            <button id="model-select-btn" class="engine-switch-btn" onclick="toggleModelMenu()" style="color: #00c6ff;">🤖</button>
             <button id="send-btn" class="send-btn" onclick="sendMessage()">🚀</button>
         </div>
     </div>
@@ -757,7 +754,8 @@
         const db   = firebase.firestore();
 
         // ── 🔀 Model Switch ──
-        let activeEngine = 'openrouter';
+        // EDITED: Default engine is now Gemini
+        let activeEngine = 'gemini';
 
         function toggleModelMenu() {
             document.getElementById('model-popup-menu').classList.toggle('show');
@@ -766,11 +764,12 @@
         function selectModel(model) {
             activeEngine = model;
             const btn = document.getElementById('model-select-btn');
+            // EDITED: Removed text, kept only Emojis
             if (model === 'gemini') {
-                btn.innerHTML  = '🤖 Gemini';
+                btn.innerHTML  = '🤖';
                 btn.style.color = '#00c6ff';
             } else if (model === 'openrouter') {
-                btn.innerHTML  = '🌐 OpenRouter';
+                btn.innerHTML  = '🌐';
                 btn.style.color = '#a855f7';
             }
             document.getElementById('model-popup-menu').classList.remove('show');
