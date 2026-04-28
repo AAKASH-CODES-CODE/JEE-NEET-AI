@@ -69,7 +69,7 @@ def chat():
                 "X-Title": "JEE NEET AI Tutor"
             }
             payload = {
-                "model": "meta-llama/llama-3.1-8b-instruct:free",
+                "model": "google/gemma-2-9b-it:free", # <-- NEW WORKING MODEL APPLIED HERE
                 "messages": [
                     {"role": "user", "content": full_prompt}
                 ]
