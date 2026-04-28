@@ -6,9 +6,9 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-# Vercel locker se keys nikalna (Code mein koi key hardcoded nahi hai)
+# Vercel locker se keys nikalna
 GEMINI_KEYS = [os.environ.get(f"GEMINI_KEY_{i}") for i in range(1, 15)]
-GEMINI_KEYS = [k for k in GEMINI_KEYS if k] # Jo blank hain unhe hata do
+GEMINI_KEYS = [k for k in GEMINI_KEYS if k] 
 
 OPENROUTER_KEYS = [os.environ.get("OPENROUTER_KEY_1"), os.environ.get("OPENROUTER_KEY_2")]
 OPENROUTER_KEYS = [k for k in OPENROUTER_KEYS if k]
@@ -23,7 +23,7 @@ def home():
 def chat():
     data = request.get_json()
     user_prompt = data.get('prompt', '')
-    engine = data.get('engine', 'openrouter') # Frontend se aayega konsa button dabaya
+    engine = data.get('engine', 'openrouter') 
 
     if not user_prompt:
         return jsonify({"success": False, "error": "Prompt khali hai bhai!"}), 400
@@ -31,7 +31,7 @@ def chat():
     last_error = ""
     full_prompt = f"{SYSTEM_PROMPT}\n\nStudent Query: {user_prompt}"
 
-    # 🚀 AGAR GEMINI BUTTON DABAYA HAI
+    # 🤖 AGAR GEMINI BUTTON DABAYA HAI
     if engine == 'gemini':
         if not GEMINI_KEYS:
             return jsonify({"success": False, "error": "Vercel mein Gemini keys nahi mili!"}), 500
@@ -48,7 +48,7 @@ def chat():
                     return jsonify({"success": True, "answer": answer})
                 else:
                     last_error = res.text
-                    continue # Error aaya toh limit cross ho sakti hai, Next key try karo!
+                    continue 
             except Exception as e:
                 last_error = str(e)
                 continue
@@ -61,32 +61,42 @@ def chat():
             return jsonify({"success": False, "error": "Vercel mein OpenRouter keys nahi mili!"}), 500
         
         url = "https://openrouter.ai/api/v1/chat/completions"
-        for key in OPENROUTER_KEYS:
-            headers = {
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://jee-neet-ai.vercel.app", 
-                "X-Title": "JEE NEET AI Tutor"
-            }
-            payload = {
-                "model": "google/gemma-2-9b-it:free", # <-- NEW WORKING MODEL APPLIED HERE
-                "messages": [
-                    {"role": "user", "content": full_prompt}
-                ]
-            }
-            try:
-                res = requests.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    answer = res.json()['choices'][0]['message']['content']
-                    return jsonify({"success": True, "answer": answer})
-                else:
-                    last_error = res.text
-                    continue # Next key try karo!
-            except Exception as e:
-                last_error = str(e)
-                continue
         
-        return jsonify({"success": False, "error": f"Saari OpenRouter keys busy hain. Last Error: {last_error}"}), 500
+        # 🔥 Master Auto-Fallback List: 3 Sabse Stable Free Models
+        free_models = [
+            "meta-llama/llama-3-8b-instruct:free",  # Model 1
+            "mistralai/mistral-7b-instruct:free",   # Model 2
+            "huggingfaceh4/zephyr-7b-beta:free"     # Model 3
+        ]
+
+        # Pehle Key 1 try hogi, phir saare models. Agar fail, toh Key 2 try hogi.
+        for key in OPENROUTER_KEYS:
+            for model_name in free_models:
+                headers = {
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://jee-neet-ai.vercel.app", 
+                    "X-Title": "JEE NEET AI Tutor"
+                }
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "user", "content": full_prompt}
+                    ]
+                }
+                try:
+                    res = requests.post(url, headers=headers, json=payload)
+                    if res.status_code == 200:
+                        answer = res.json()['choices'][0]['message']['content']
+                        return jsonify({"success": True, "answer": answer})
+                    else:
+                        last_error = res.text
+                        continue # Agar error aaya toh agla model try karo
+                except Exception as e:
+                    last_error = str(e)
+                    continue
+        
+        return jsonify({"success": False, "error": f"OpenRouter API busy hai. Last Error: {last_error}"}), 500
 
     else:
         return jsonify({"success": False, "error": "Invalid engine selected."}), 400
