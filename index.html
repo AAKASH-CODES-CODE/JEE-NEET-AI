@@ -534,6 +534,7 @@
         }
         .auth-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 25px rgba(0,198,255,0.45); }
         .auth-btn:active { transform: translateY(0); }
+        .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
         /* ── HELP SECTION ── */
         .help-section {
@@ -558,6 +559,74 @@
         }
         .help-link:hover { background: rgba(0, 136, 204, 0.15); transform: translateY(-1px); }
         .tg-logo { width: 20px; height: 20px; }
+        
+        /* ── NEW: TUTORIAL BTN ── */
+        .tutorial-btn {
+            background: rgba(0, 198, 255, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--border-glow);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.25s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .tutorial-btn:hover {
+            background: rgba(0, 198, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* ── NEW: VIDEO MODAL ── */
+        .video-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+        .video-modal-content {
+            position: relative;
+            width: 85%;
+            max-width: 380px; 
+            aspect-ratio: 9/16; 
+            background: var(--surface-solid);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+        .close-video-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 32px; height: 32px;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .close-video-btn:hover { background: rgba(255,77,109,0.8); border-color: var(--red); }
+        .video-modal-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
 
         /* ── TYPING DOTS ── */
         .typing-dots { display: flex; gap: 5px; padding: 5px 2px; }
@@ -625,6 +694,25 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
         .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* ── SPEAK BUTTON ── */
+        .speak-btn {
+            position: absolute;
+            bottom: 6px;
+            right: 75px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            font-size: 10px;
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            transition: all 0.2s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .speak-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .speak-btn.playing { color: var(--red); border-color: var(--red); }
 
         /* ── TOGGLE TEXT ── */
         #toggle-text { font-size: 13px; margin-top: 14px; cursor: pointer; color: var(--text-muted); }
@@ -707,6 +795,9 @@
             </div>
             <button id="auth-submit-btn" class="auth-btn" onclick="handleAuth()">Login ⚡</button>
             <p onclick="toggleAuthMode()" id="toggle-text">New student? <span>Sign Up</span></p>
+            
+            <button class="tutorial-btn" onclick="openVideoTutorial()">📺 Watch Signup Tutorial</button>
+
             <div class="help-section">
                 <span style="font-size: 11px; color: var(--text-muted);">Need Help?</span>
                 <a href="https://t.me/JEE_NEET_AI_tutor" target="_blank" class="help-link">
@@ -738,6 +829,13 @@
         </div>
     </div>
 
+    <div id="video-modal" class="video-modal">
+        <div class="video-modal-content">
+            <button class="close-video-btn" onclick="closeVideoTutorial()">✕</button>
+            <iframe id="tutorial-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+
     <script>
         // ── 1. Firebase Setup ──
         const f1 = "AIzaSyCtn"; const f2 = "6o2he56DMgd"; const f3 = "s5SsawXyHEd"; const f4 = "V8VQWGCs";
@@ -752,6 +850,21 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db   = firebase.firestore();
+
+        // ── Video Tutorial Functions ──
+        function openVideoTutorial() {
+            const modal = document.getElementById('video-modal');
+            const iframe = document.getElementById('tutorial-iframe');
+            iframe.src = "https://www.youtube.com/embed/OSoGajq4QK0?autoplay=1";
+            modal.style.display = 'flex';
+        }
+
+        function closeVideoTutorial() {
+            const modal = document.getElementById('video-modal');
+            const iframe = document.getElementById('tutorial-iframe');
+            iframe.src = "";
+            modal.style.display = 'none';
+        }
 
         // ── 🔀 Model Switch ──
         let activeEngine = 'gemini';
@@ -870,6 +983,18 @@
                 .map(id => document.getElementById(id).value.trim());
             const errBox = document.getElementById('auth-error');
             errBox.style.display = 'none';
+
+            // ── LOGIN/SIGNUP COOLDOWN (5 SECONDS) ──
+            const authBtn = document.getElementById('auth-submit-btn');
+            authBtn.disabled = true;
+            authBtn.innerText = "Please wait... ⏳";
+            
+            setTimeout(() => {
+                authBtn.disabled = false;
+                authBtn.innerText = isLoginMode ? "Login ⚡" : "Sign Up 🚀";
+            }, 5000);
+            // ────────────────────────────────────────
+
             try {
                 if (isLoginMode) {
                     const res = await auth.signInWithEmailAndPassword(e, ps);
@@ -1020,6 +1145,61 @@
             el.appendChild(btn);
         }
 
+        // ── 🔊 TEXT TO SPEECH CLEANER & BUTTON ──
+        function cleanTextForSpeech(text) {
+            // Remove Markdown like **, *, #, _, $$, and Links taaki AI natural padhe
+            return text.replace(/[*#_]/g, '')
+                       .replace(/\$\$(.*?)\$\$/g, '$1')
+                       .replace(/\$(.*?)\$/g, '$1')
+                       .replace(/`([^`]*)`/g, '$1')
+                       .replace(/\[(.*?)\]\(.*?\)/g, '$1'); 
+        }
+
+        function addSpeakButton(el, text) {
+            const btn = document.createElement('button');
+            btn.className = 'speak-btn';
+            btn.innerHTML = '🔊 Speak';
+            
+            btn.onclick = () => {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel(); // Stop playing
+                    btn.innerHTML = '🔊 Speak';
+                    btn.classList.remove('playing');
+                    return;
+                }
+
+                // Stop other buttons if clicked
+                window.speechSynthesis.cancel();
+                document.querySelectorAll('.speak-btn').forEach(b => {
+                    b.innerHTML = '🔊 Speak';
+                    b.classList.remove('playing');
+                });
+
+                const cleanText = cleanTextForSpeech(text);
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'en-IN'; // Indian English accent setup
+                utterance.rate = 1.0;
+
+                utterance.onstart = () => {
+                    btn.innerHTML = '🛑 Stop';
+                    btn.classList.add('playing');
+                };
+
+                utterance.onend = () => {
+                    btn.innerHTML = '🔊 Speak';
+                    btn.classList.remove('playing');
+                };
+
+                utterance.onerror = () => {
+                    btn.innerHTML = '🔊 Speak';
+                    btn.classList.remove('playing');
+                };
+
+                window.speechSynthesis.speak(utterance);
+            };
+            el.appendChild(btn);
+        }
+
         // ── Append Message ──
         function appendMessage(type, text, isHtml = false) {
             const chatBox = document.getElementById('chat-box');
@@ -1036,6 +1216,9 @@
 
             if (!isHtml) {
                 addCopyButton(div, text);
+                if (type === 'ai-msg') {
+                    addSpeakButton(div, text); // 🔊 Add speak button only to AI replies
+                }
             }
 
             chatBox.appendChild(div);
@@ -1094,7 +1277,7 @@
                 true
             );
 
-            // ── BUG FIX: History mein Naya Sawal aur System Prompt mix karna ──
+            // ── History mix karna ──
             let historyText = "You are an Expert JEE/NEET tutor. Format math strictly with $$. Explain concepts clearly and concisely.\n\n";
             
             if (currentChatContext.length > 0) {
@@ -1105,13 +1288,11 @@
                 historyText += "---------------------------\n\n";
             }
             
-            // Ye sabse zaroori line jo pehle miss ho gayi thi!
             historyText += "Student's New Query: " + text;
 
             // UI Memory mein save karna
             currentChatContext.push({ sender: 'user', text: text });
             if (currentChatContext.length > 8) currentChatContext.shift();
-            // ────────────────────────────────────────────────────────
 
             try {
                 // 🚀 Request direct Vercel Backend ko ja rahi hai
@@ -1127,6 +1308,10 @@
                     const aiText = data.answer;
                     loading.innerHTML = marked.parse(aiText);
                     addCopyButton(loading, aiText); 
+                    
+                    // Naya: Chat load hone ke baad text-to-speech button load
+                    addSpeakButton(loading, aiText);
+
                     MathJax.typesetPromise([loading]);
 
                     // Firebase par save
