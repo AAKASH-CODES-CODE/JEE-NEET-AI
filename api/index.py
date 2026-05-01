@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import requests
 import time
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -14,7 +15,7 @@ GEMINI_KEYS = [k for k in GEMINI_KEYS if k]
 OPENROUTER_KEYS = [os.environ.get("OPENROUTER_KEY_1"), os.environ.get("OPENROUTER_KEY_2")]
 OPENROUTER_KEYS = [k for k in OPENROUTER_KEYS if k]
 
-# 📷 Nayi Vision API Keys
+# 📷 Vision API Keys
 HF_KEY = os.environ.get("HF_KEY")
 CF_ACCOUNT_ID = os.environ.get("CF_ACCOUNT_ID")
 CF_KEY = os.environ.get("CF_KEY")
@@ -35,7 +36,7 @@ def chat():
     user_prompt = data.get('prompt', '')
     history = data.get('history', '') 
     engine = data.get('engine', 'gemini')
-    image_data = data.get('image', None) # 📷 Frontend se Base64 image aayegi
+    image_data = data.get('image', None)
 
     if not user_prompt and not image_data:
         return jsonify({"success": False, "error": "Sawal ya photo toh bhejo bhai!"}), 400
@@ -49,55 +50,71 @@ def chat():
     current_time = time.time()
 
     # ==========================================
-    # 📷 AGAR PHOTO AAYI HAI (Vision Fallback Logic)
+    # 📷 AGAR PHOTO AAYI HAI (Vision Logic)
     # ==========================================
     if image_data:
-        vision_payload = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": full_prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
-                    ]
-                }
-            ],
-            "max_tokens": 1000
-        }
-
-        # Step 1: Hugging Face (Qwen2-VL) ko try karo
-        if HF_KEY:
-            try:
-                hf_url = "https://api-inference.huggingface.co/models/Qwen/Qwen2-VL-7B-Instruct/v1/chat/completions"
-                hf_headers = {"Authorization": f"Bearer {HF_KEY}", "Content-Type": "application/json"}
-                res = requests.post(hf_url, headers=hf_headers, json=vision_payload, timeout=15)
-                
-                if res.status_code == 200:
-                    answer = res.json()['choices'][0]['message']['content']
-                    return jsonify({"success": True, "answer": answer})
-                else:
-                    last_error = f"HF Error: {res.text}"
-            except Exception as e:
-                last_error = f"HF Exception: {str(e)}"
-
-        # Step 2: Fallback to Cloudflare (Llama-3.2-Vision) agar HF fail ho jaye
+        
+        # STEP 1: Cloudflare Vision (Sabse Fast, Ab Unlock Ho Chuka Hai)
         if CF_KEY and CF_ACCOUNT_ID:
             try:
-                cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/v1/chat/completions"
+                # 🔥 FIX: Base64 ko array of bytes (numbers) mein convert karna
+                img_bytes = base64.b64decode(image_data)
+                img_array = list(img_bytes)
+
+                cf_url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.2-11b-vision-instruct"
                 cf_headers = {"Authorization": f"Bearer {CF_KEY}", "Content-Type": "application/json"}
-                vision_payload["model"] = "@cf/meta/llama-3.2-11b-vision-instruct" # CF requires model parameter
                 
-                res = requests.post(cf_url, headers=cf_headers, json=vision_payload, timeout=15)
+                # Naya Cloudflare REST API Payload format
+                cf_payload = {
+                    "prompt": full_prompt,
+                    "image": img_array
+                }
+                
+                res = requests.post(cf_url, headers=cf_headers, json=cf_payload, timeout=20)
+                
+                if res.status_code == 200:
+                    response_json = res.json()
+                    result_data = response_json.get('result', {})
+                    if isinstance(result_data, dict):
+                        answer = result_data.get('response', '')
+                    else:
+                        answer = str(result_data)
+                    return jsonify({"success": True, "answer": answer})
+                else:
+                    last_error += f"CF Error: {res.text} | "
+            except Exception as e:
+                last_error += f"CF Exception: {str(e)} | "
+
+        # STEP 2: Hugging Face Fallback (Agar CF by chance busy ho)
+        if HF_KEY:
+            try:
+                # 🔥 FIX: HF ka naya URL aur format update kar diya hai
+                hf_url = "https://api-inference.huggingface.co/v1/chat/completions"
+                hf_headers = {"Authorization": f"Bearer {HF_KEY}", "Content-Type": "application/json"}
+                hf_payload = {
+                    "model": "meta-llama/Llama-3.2-11B-Vision-Instruct",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": full_prompt},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                            ]
+                        }
+                    ],
+                    "max_tokens": 1000
+                }
+                res = requests.post(hf_url, headers=hf_headers, json=hf_payload, timeout=20)
                 
                 if res.status_code == 200:
                     answer = res.json()['choices'][0]['message']['content']
                     return jsonify({"success": True, "answer": answer})
                 else:
-                    last_error += f" | CF Error: {res.text}"
+                    last_error += f"HF Error: {res.text}"
             except Exception as e:
-                last_error += f" | CF Exception: {str(e)}"
+                last_error += f"HF Exception: {str(e)}"
 
-        return jsonify({"success": False, "error": f"Dono Vision AI fail ho gaye. Backend log check karo. Errors: {last_error}"}), 500
+        return jsonify({"success": False, "error": f"Dono Vision AI fail ho gaye. Errors: {last_error}"}), 500
 
 
     # ==========================================
@@ -107,7 +124,7 @@ def chat():
         healthy_keys = [k for k in GEMINI_KEYS if BLOCKED_KEYS.get(k, 0) < current_time]
 
         if not healthy_keys:
-            return jsonify({"success": False, "error": "Saari Gemini keys abhi limit me hain (Cooldown). Thodi der baad try karein."}), 503
+            return jsonify({"success": False, "error": "Saari Gemini keys abhi cooldown me hain. Thodi der baad try karein."}), 503
 
         for key in healthy_keys:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
