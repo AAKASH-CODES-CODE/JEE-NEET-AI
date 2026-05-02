@@ -228,6 +228,22 @@
         }
         .auth-btn-main:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,198,255,0.45); }
         .auth-btn-main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        /* Google Login Styles */
+        .divider { display: flex; align-items: center; text-align: center; margin: 18px 0; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border-b); }
+        .divider:not(:empty)::before { margin-right: 15px; }
+        .divider:not(:empty)::after { margin-left: 15px; }
+        .google-btn {
+            width: 100%; padding: 13px; background: rgba(255,255,255,0.06);
+            color: white; border: 1px solid var(--border-b); border-radius: 14px;
+            font-weight: 700; font-size: 14.5px; cursor: pointer; transition: all 0.22s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .google-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(0,198,255,0.3); transform: translateY(-2px); }
+        .google-icon { width: 18px; height: 18px; }
+
         #toggle-text { margin-top: 16px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
         #toggle-text span { color: var(--primary); font-weight: 700; }
         #auth-error {
@@ -539,7 +555,6 @@
 
 <div id="bg"></div>
 
-<!-- ─── SIDEBAR ──────────────────────────────────────── -->
 <div id="sidebar">
     <div class="sb-header">
         <span class="sb-title">📂 Chat History</span>
@@ -551,7 +566,6 @@
 <div id="overlay" onclick="closeSB()"></div>
 <div id="menu-overlay" onclick="closeMenu()"></div>
 
-<!-- ─── HEADER ───────────────────────────────────────── -->
 <div id="header">
     <div class="hdr-left">
         <button class="hist-pill" id="btn-hist" onclick="toggleSB()">📂 History</button>
@@ -567,7 +581,6 @@
     </div>
 </div>
 
-<!-- ─── PROFILE MODAL ─────────────────────────────────── -->
 <div id="prof-modal" class="modal-bg">
     <div class="modal-box">
         <button class="modal-close" onclick="closeM('prof-modal')">✕</button>
@@ -589,7 +602,6 @@
     </div>
 </div>
 
-<!-- ─── NEWS MODAL ────────────────────────────────────── -->
 <div id="news-modal" class="modal-bg">
     <div class="modal-box">
         <button class="modal-close" onclick="closeM('news-modal')">✕</button>
@@ -600,7 +612,6 @@
     </div>
 </div>
 
-<!-- ─── SETTINGS POPUP ────────────────────────────────── -->
 <div id="menu-popup">
     <div class="menu-sec-ttl">ℹ️ About This App</div>
     <div class="menu-card">
@@ -615,8 +626,6 @@
     <button class="logout-btn" onclick="handleLogout()">Logout Account 🚪</button>
 </div>
 
-<!-- ─── AUTH SCREEN ───────────────────────────────────── -->
-<!-- FIX: display:flex here so it shows before Firebase resolves, managed by JS afterwards -->
 <div id="auth-screen" class="screen" style="display:flex; justify-content:center; align-items:center;">
     <div class="auth-glow"></div>
     <div class="auth-box">
@@ -631,6 +640,13 @@
         </div>
         <span id="forgot" class="forgot" onclick="resetPwd()">Forgot Password? 🔑</span>
         <button id="auth-btn" class="auth-btn-main" onclick="handleAuth()">Login ⚡</button>
+        
+        <div class="divider">OR</div>
+        <button class="google-btn" onclick="signInWithGoogle()">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="google-icon" alt="G">
+            Continue with Google
+        </button>
+
         <p onclick="toggleMode()" id="toggle-text">New student? <span>Sign Up</span></p>
         <button class="tut-btn" onclick="openVid()">📺 Watch Tutorial</button>
         <div class="help-sec">
@@ -644,25 +660,20 @@
     </div>
 </div>
 
-<!-- ─── VIDEO MODAL ──────────────────────────────────── -->
 <div id="vid-modal" class="modal-bg">
     <div class="vid-wrap">
         <button class="close-vid" onclick="closeVid()">✕</button>
-        <!-- FIX: iframe fills container via CSS (position:absolute;inset:0;width:100%;height:100%) -->
         <iframe id="tut-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
     </div>
 </div>
 
-<!-- ─── MODEL MENU (fixed — outside overflow:hidden) ──── -->
 <div id="model-menu">
     <div class="model-opt" onclick="setModel('gemini')">🤖 <span style="color:#00c6ff;font-weight:700;">Gemini 2.5</span></div>
     <div class="model-opt" onclick="setModel('openrouter')">🌐 <span style="color:#a855f7;font-weight:700;">OpenRouter</span></div>
 </div>
 
-<!-- ─── SUGGESTIONS (fixed — outside overflow:hidden) ─── -->
 <div id="sug-box"></div>
 
-<!-- ─── CHAT SCREEN ──────────────────────────────────── -->
 <div id="chat-screen" style="display:none; flex:1; flex-direction:column; overflow:hidden; position:relative; z-index:1;">
     <div id="chat-box"></div>
 
@@ -687,7 +698,6 @@
     </div>
 </div>
 
-<!-- ─── SCRIPTS ───────────────────────────────────────── -->
 <script>
     // ── Firebase ─────────────────────────────────────────
     const _a = "AIzaSyCtn", _b = "6o2he56DMgd", _c = "s5SsawXyHEd", _d = "V8VQWGCs";
@@ -816,7 +826,7 @@
         if (!mn.contains(e.target) && e.target !== mb) mn.classList.remove('show');
     });
 
-    // ── Password Toggle ──t��────────────────────────────────
+    // ── Password Toggle ──t────────────────────────────────
     function togglePwd() {
         const p = $('auth-pwd'), e = $('eye');
         if (p.type === 'password') { p.type = 'text';     e.innerText = '🙈'; }
@@ -848,13 +858,17 @@
     // ── Auth State ────────────────────────────────────────
     auth.onAuthStateChanged(async user => {
         const loggedIn = user && user.emailVerified;
-        $('auth-screen').style.display  = loggedIn ? 'none' : 'flex';
-        $('chat-screen').style.display  = loggedIn ? 'flex' : 'none';
-        $('btn-hist').style.display     = loggedIn ? 'flex' : 'none';
-        $('btn-set').style.display      = loggedIn ? 'flex' : 'none';
-        ['btn-news','btn-prof'].forEach(id => $(id).style.display = loggedIn ? 'flex' : 'none');
+        // Skip emailVerified check if using Google Sign-in to allow them in
+        const isGoogleUser = user && user.providerData.some(p => p.providerId === 'google.com');
+        const allowedIn = loggedIn || isGoogleUser;
 
-        if (loggedIn) {
+        $('auth-screen').style.display  = allowedIn ? 'none' : 'flex';
+        $('chat-screen').style.display  = allowedIn ? 'flex' : 'none';
+        $('btn-hist').style.display     = allowedIn ? 'flex' : 'none';
+        $('btn-set').style.display      = allowedIn ? 'flex' : 'none';
+        ['btn-news','btn-prof'].forEach(id => $(id).style.display = allowedIn ? 'flex' : 'none');
+
+        if (allowedIn) {
             CU = user;
             try { await syncProfile(user); } catch {}
             startNewChat();
@@ -906,6 +920,38 @@
             }
         } catch(err) { eb.innerText = err.message; eb.style.display = 'block'; }
         finally { clearTimeout(fb); btn.disabled = false; btn.innerText = isLogin ? "Login ⚡" : "Sign Up 🚀"; }
+    }
+
+    // ── Google Login ──────────────────────────────────────
+    async function signInWithGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const eb = $('auth-error');
+        eb.style.display = 'none';
+        
+        try {
+            const res = await auth.signInWithPopup(provider);
+            const user = res.user;
+            
+            const docRef = db.collection('users').doc(user.uid);
+            const doc = await docRef.get();
+            
+            if (!doc.exists) {
+                await docRef.set({
+                    name: user.displayName || "Student",
+                    email: user.email,
+                    phone: user.phoneNumber || "",
+                    joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    isPremium: false,
+                    specialLimit: 30,
+                    photosToday: 0,
+                    doubtsSolved: 0,
+                    lastPhotoDate: today()
+                });
+            }
+        } catch (err) {
+            eb.innerText = "Google Sign-In failed: " + err.message;
+            eb.style.display = 'block';
+        }
     }
 
     // ── Menu & Sidebar ────────────────────────────────────
