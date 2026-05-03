@@ -228,7 +228,7 @@
         }
         .auth-btn-main:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,198,255,0.45); }
         .auth-btn-main:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-        
+
         /* Google Login Styles */
         .divider { display: flex; align-items: center; text-align: center; margin: 18px 0; color: var(--text-muted); font-size: 12px; font-weight: 600; }
         .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border-b); }
@@ -612,17 +612,32 @@
     </div>
 </div>
 
+<!-- 🔥 UPDATE: MENU POPUP MEIN SUPPORT & LEGAL INFO ADD KIYA -->
 <div id="menu-popup">
     <div class="menu-sec-ttl">ℹ️ About This App</div>
     <div class="menu-card">
         <b>Developer:</b> Aakash<br>
         <b>Motive:</b> Clear & accurate doubt resolution for JEE/NEET aspirants. 🎯
     </div>
-    <div class="menu-sec-ttl">🆘 Support</div>
-    <div class="menu-card" style="display:flex;align-items:center;gap:9px;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" style="width:18px;flex-shrink:0;">
-        <a href="https://t.me/JEE_NEET_AI_tutor" target="_blank" style="color:#0088cc;text-decoration:none;font-weight:700;">Join Telegram Support</a>
+    
+    <div class="menu-sec-ttl">🆘 Support & Contact</div>
+    <div class="menu-card" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:9px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" style="width:18px;flex-shrink:0;">
+            <a href="https://t.me/JEE_NEET_AI_tutor" target="_blank" style="color:#0088cc;text-decoration:none;font-weight:700;">Join Telegram Support</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px; border-top: 1px solid var(--border); padding-top: 8px;">
+            <span style="font-size:16px;">📧</span>
+            <a href="mailto:fake.akash07@gmail.com" style="color:var(--text);text-decoration:none;font-weight:600;font-size:13px;word-break: break-all;">fake.akash07@gmail.com</a>
+        </div>
     </div>
+
+    <div class="menu-sec-ttl">📜 Legal Info</div>
+    <div class="menu-card" style="display:flex; flex-direction:column; gap:10px;">
+        <a href="#" style="color:var(--primary); text-decoration:none; font-size:12.5px; font-weight:600;">🛡️ Privacy Policy</a>
+        <a href="#" style="color:var(--primary); text-decoration:none; font-size:12.5px; font-weight:600;">📄 Terms & Conditions</a>
+    </div>
+
     <button class="logout-btn" onclick="handleLogout()">Logout Account 🚪</button>
 </div>
 
@@ -640,7 +655,7 @@
         </div>
         <span id="forgot" class="forgot" onclick="resetPwd()">Forgot Password? 🔑</span>
         <button id="auth-btn" class="auth-btn-main" onclick="handleAuth()">Login ⚡</button>
-        
+
         <div class="divider">OR</div>
         <button class="google-btn" onclick="signInWithGoogle()">
             <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="google-icon" alt="G">
@@ -673,6 +688,21 @@
 </div>
 
 <div id="sug-box"></div>
+
+<!-- ─── AD MODAL PLACEHOLDER ─────────────────────────── -->
+<div id="ad-modal" class="modal-bg" style="z-index: 3000;">
+    <div class="modal-box" style="text-align:center;">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Sponsored</div>
+        <div style="background: var(--surface2); border: 1px dashed var(--border-glow); border-radius: 14px; padding: 40px 20px; margin-bottom: 20px;">
+            <span style="font-size: 32px;">📺</span>
+            <h3 style="color: var(--primary); margin: 10px 0;">Ad Placeholder</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Currently we are not showing any ads
+you can skip it </p>
+        </div>
+        <button onclick="closeAd()" class="auth-btn-main" style="background: var(--surface2); color: var(--text); border: 1px solid var(--border);">Skip Ad ⏭️</button>
+        <p style="font-size: 11px; color: var(--gold); margin-top: 15px; font-weight: 700;">👑 Upgrade to PRO to remove all Ads!</p>
+    </div>
+</div>
 
 <div id="chat-screen" style="display:none; flex:1; flex-direction:column; overflow:hidden; position:relative; z-index:1;">
     <div id="chat-box"></div>
@@ -714,13 +744,14 @@
     const db   = firebase.firestore();
 
     // ── State ─────────────────────────────────────────────
-    let CU = null, UD = null, isLogin = true, sessId = null, ctx = [], engine = 'gemini', imgB64 = null, cooling = false;
+    let CU = null, UD = null, isLogin = true, sessId = null, ctx = [], engine = 'gemini', imgB64 = null, cooling = false, doubtCounter = 0;
 
     // ── Helpers ───────────────────────────────────────────
     const $ = id => document.getElementById(id);
     function today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
     function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function closeM(id) { $(id).style.display = 'none'; }
+    function closeAd() { $('ad-modal').style.display = 'none'; }
 
     // ── Video ─────────────────────────────────────────────
     function openVid() {
@@ -927,14 +958,14 @@
         const provider = new firebase.auth.GoogleAuthProvider();
         const eb = $('auth-error');
         eb.style.display = 'none';
-        
+
         try {
             const res = await auth.signInWithPopup(provider);
             const user = res.user;
-            
+
             const docRef = db.collection('users').doc(user.uid);
             const doc = await docRef.get();
-            
+
             if (!doc.exists) {
                 await docRef.set({
                     name: user.displayName || "Student",
@@ -1097,6 +1128,15 @@
             if (used >= max) { alert("Aapki aaj ki photo limit khatam ho gayi! Kal try karein ya text se puchein."); return; }
         }
 
+        // 🔥 UPDATE: AD COUNTER LOGIC (Only for Free Users) 
+        if (UD && !UD.isPremium) {
+            doubtCounter++;
+            if (doubtCounter >= 5) {
+                $('ad-modal').style.display = 'flex';
+                doubtCounter = 0; // Reset counter after showing ad
+            }
+        }
+
         cooling = true; sb.disabled = true;
         const b64 = imgB64;
         addMsg('user-msg', text, false, b64);
@@ -1158,3 +1198,4 @@
 </script>
 </body>
 </html>
+
